@@ -221,7 +221,7 @@ ZEND_API int zend_std_has_dimension(zend_object *object, zval *offset, int check
 ZEND_API void zend_std_unset_dimension(zend_object *object, zval *offset);
 ZEND_API zend_function *zend_std_get_method(zend_object **obj_ptr, zend_string *method_name, const zval *key);
 ZEND_API zend_string *zend_std_get_class_name(const zend_object *zobj);
-ZEND_API int zend_std_compare_objects(zval *o1, zval *o2);
+ZEND_API zend_object *zend_std_compare_objects(zval *o1, zval *o2);
 ZEND_API int zend_std_get_closure(zend_object *obj, zend_class_entry **ce_ptr, zend_function **fptr_ptr, zend_object **obj_ptr, bool check_only);
 ZEND_API void rebuild_object_properties(zend_object *zobj);
 

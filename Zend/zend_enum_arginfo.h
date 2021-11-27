@@ -47,3 +47,16 @@ static zend_class_entry *register_class_BackedEnum(zend_class_entry *class_entry
 
 	return class_entry;
 }
+
+static zend_class_entry *register_class_OrderingEnum()
+{
+	zend_class_entry *class_entry;
+
+	class_entry = zend_register_internal_enum("Ordering", IS_UNDEF, NULL);
+	zend_enum_add_case_cstr(class_entry, "LeftGreater", NULL);
+	zend_enum_add_case_cstr(class_entry, "RightGreater", NULL);
+	zend_enum_add_case_cstr(class_entry, "Equal", NULL);
+	zend_enum_add_case_cstr(class_entry, "Uncomparable", NULL);
+
+	return class_entry;
+}

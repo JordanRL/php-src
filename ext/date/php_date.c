@@ -166,7 +166,7 @@ static zend_object *date_object_clone_timezone(zend_object *this_ptr);
 static zend_object *date_object_clone_interval(zend_object *this_ptr);
 static zend_object *date_object_clone_period(zend_object *this_ptr);
 
-static int date_object_compare_date(zval *d1, zval *d2);
+static zend_object *date_object_compare_date(zval *d1, zval *d2);
 static HashTable *date_object_get_gc(zend_object *object, zval **table, int *n);
 static HashTable *date_object_get_properties_for(zend_object *object, zend_prop_purpose purpose);
 static HashTable *date_object_get_gc_interval(zend_object *object, zval **table, int *n);
@@ -1749,7 +1749,7 @@ static void date_clone_immutable(zval *object, zval *new_object) /* {{{ */
 	ZVAL_OBJ(new_object, date_object_clone_date(Z_OBJ_P(object)));
 } /* }}} */
 
-static int date_object_compare_date(zval *d1, zval *d2) /* {{{ */
+static zend_object *date_object_compare_date(zval *d1, zval *d2) /* {{{ */
 {
 	php_date_obj *o1;
 	php_date_obj *o2;
@@ -1761,7 +1761,7 @@ static int date_object_compare_date(zval *d1, zval *d2) /* {{{ */
 
 	if (!o1->time || !o2->time) {
 		php_error_docref(NULL, E_WARNING, "Trying to compare an incomplete DateTime or DateTimeImmutable object");
-		return ZEND_UNCOMPARABLE;
+		return ORDERING_UC;
 	}
 	if (!o1->time->sse_uptodate) {
 		timelib_update_ts(o1->time, o1->time->tz_info);
@@ -1901,7 +1901,7 @@ static int date_object_compare_timezone(zval *tz1, zval *tz2) /* {{{ */
 
 	if (o1->type != o2->type) {
 		php_error_docref(NULL, E_WARNING, "Trying to compare different kinds of DateTimeZone objects");
-		return ZEND_UNCOMPARABLE;
+		return ORDERING_UC;
 	}
 
 	switch (o1->type) {
@@ -3771,7 +3771,7 @@ static int date_interval_compare_objects(zval *o1, zval *o2) {
 	 * smaller, equal or greater depending on the point in time at which the interval starts. As
 	 * such, we treat DateInterval objects are non-comparable and emit a warning. */
 	zend_error(E_WARNING, "Cannot compare DateInterval objects");
-	return ZEND_UNCOMPARABLE;
+	return ORDERING_UC;
 }
 
 /* {{{ date_interval_read_property */

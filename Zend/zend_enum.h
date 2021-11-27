@@ -21,11 +21,15 @@
 
 #include "zend.h"
 #include "zend_types.h"
+#ifndef ZEND_API_H
+#include "zend_API.h"
+#endif
 
 BEGIN_EXTERN_C()
 
 extern ZEND_API zend_class_entry *zend_ce_unit_enum;
 extern ZEND_API zend_class_entry *zend_ce_backed_enum;
+extern ZEND_API zend_class_entry *zend_ce_ordering_enum;
 
 void zend_register_enum_ce(void);
 void zend_enum_add_interfaces(zend_class_entry *ce);
@@ -53,6 +57,13 @@ static zend_always_inline zval *zend_enum_fetch_case_value(zend_object *zobj)
 	ZEND_ASSERT(zobj->ce->enum_backing_type != IS_UNDEF);
 	return OBJ_PROP_NUM(zobj, 1);
 }
+
+#define ORDERING_EQ zend_enum_get_case_cstr(zend_ce_ordering_enum, "Equal")
+#define ORDERING_GT zend_enum_get_case_cstr(zend_ce_ordering_enum, "LeftGreater")
+#define ORDERING_LT zend_enum_get_case_cstr(zend_ce_ordering_enum, "RightGreater")
+#define ORDERING_UC zend_enum_get_case_cstr(zend_ce_ordering_enum, "Uncomparable")
+
+#define ORDERING_IS(l, r) Z_STRVAL(*(zend_object *)(l)) == Z_STRVAL(*(zend_object *)(r))
 
 END_EXTERN_C()
 

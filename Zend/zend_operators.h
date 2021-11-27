@@ -34,6 +34,9 @@
 #include "zend_strtod.h"
 #include "zend_multiply.h"
 #include "zend_object_handlers.h"
+#ifndef ZEND_ENUM_H
+#include "zend_enum.h"
+#endif
 
 #define LONG_SIGN_MASK ZEND_LONG_MIN
 
@@ -417,13 +420,7 @@ again:
 	return result;
 }
 
-/* Indicate that two values cannot be compared. This value should be returned for both orderings
- * of the operands. This implies that all of ==, <, <= and >, >= will return false, because we
- * canonicalize >/>= to </<= with swapped operands. */
-// TODO: Use a different value to allow an actual distinction here.
-#define ZEND_UNCOMPARABLE 1
-
-ZEND_API int ZEND_FASTCALL zend_compare(zval *op1, zval *op2);
+ZEND_API zend_object ZEND_FASTCALL *zend_compare(zval *op1, zval *op2);
 
 ZEND_API zend_result ZEND_FASTCALL compare_function(zval *result, zval *op1, zval *op2);
 
@@ -464,9 +461,9 @@ ZEND_API int ZEND_FASTCALL zend_binary_strncasecmp_l(const char *s1, size_t len1
 
 ZEND_API bool ZEND_FASTCALL zendi_smart_streq(zend_string *s1, zend_string *s2);
 ZEND_API int ZEND_FASTCALL zendi_smart_strcmp(zend_string *s1, zend_string *s2);
-ZEND_API int ZEND_FASTCALL zend_compare_symbol_tables(HashTable *ht1, HashTable *ht2);
-ZEND_API int ZEND_FASTCALL zend_compare_arrays(zval *a1, zval *a2);
-ZEND_API int ZEND_FASTCALL zend_compare_objects(zval *o1, zval *o2);
+ZEND_API zend_object ZEND_FASTCALL *zend_compare_symbol_tables(HashTable *ht1, HashTable *ht2);
+ZEND_API zend_object ZEND_FASTCALL *zend_compare_arrays(zval *a1, zval *a2);
+ZEND_API zend_object ZEND_FASTCALL *zend_compare_objects(zval *o1, zval *o2);
 
 ZEND_API int ZEND_FASTCALL zend_atoi(const char *str, size_t str_len);
 ZEND_API zend_long ZEND_FASTCALL zend_atol(const char *str, size_t str_len);
