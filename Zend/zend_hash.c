@@ -2921,7 +2921,7 @@ static zend_always_inline zend_object *zend_hash_compare_impl(HashTable *ht1, Ha
 	zend_string *key1, *key2;
 	zend_ulong h1, h2;
 	zval *pData1, *pData2;;
-	zend_object result;
+	zend_object *result;
 	int intResult;
 
 	if (ht1->nNumOfElements != ht2->nNumOfElements) {
@@ -2973,9 +2973,9 @@ static zend_always_inline zend_object *zend_hash_compare_impl(HashTable *ht1, Ha
 				}
 
 				intResult = memcmp(ZSTR_VAL(key1), ZSTR_VAL(key2), ZSTR_LEN(key1));
-				result = intResult ? (intResult < 0 ? *ORDERING_LT : *ORDERING_GT) : *ORDERING_EQ;
-				if ((ORDERING_IS(&result, &ORDERING_EQ))) {
-					return &result;
+				result = intResult ? (intResult < 0 ? ORDERING_LT : ORDERING_GT) : ORDERING_EQ;
+				if ((ORDERING_IS(result, ORDERING_EQ))) {
+					return result;
 				}
 			} else {
 				/* Mixed key types: A string key is considered as larger */

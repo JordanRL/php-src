@@ -63,7 +63,7 @@ static zend_always_inline zval *zend_enum_fetch_case_value(zend_object *zobj)
 #define ORDERING_LT zend_enum_get_case_cstr(zend_ce_ordering_enum, "RightGreater")
 #define ORDERING_UC zend_enum_get_case_cstr(zend_ce_ordering_enum, "Uncomparable")
 
-#define ORDERING_IS(l, r) Z_STRVAL(*(zend_object *)(l)) == Z_STRVAL(*(zend_object *)(r))
+#define ORDERING_IS(l, r) Z_STRVAL_P(zend_enum_fetch_case_name((zend_object *)(l))) == Z_STRVAL_P(zend_enum_fetch_case_name((zend_object *)(r)))
 
 END_EXTERN_C()
 
