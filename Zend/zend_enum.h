@@ -58,13 +58,28 @@ static zend_always_inline zval *zend_enum_fetch_case_value(zend_object *zobj)
 	return OBJ_PROP_NUM(zobj, 1);
 }
 
+static zend_always_inline zend_bool zend_enum_is_same_case_name(zend_object *l, zend_object *r)
+{
+	return Z_STRVAL_P(zend_enum_fetch_case_name((zend_object *)(l))) ==
+	Z_STRVAL_P(zend_enum_fetch_case_name((zend_object *)(r)));
+}
+
+static zend_always_inline zend_bool zend_enum_is_same_case_value(zend_object *l, zend_object *r)
+{
+	return Z_STRVAL_P(zend_enum_fetch_case_value((zend_object *)(l))) ==
+		   Z_STRVAL_P(zend_enum_fetch_case_value((zend_object *)(r)));
+}
+
+
 #define ORDERING_EQ zend_enum_get_case_cstr(zend_ce_ordering_enum, "Equal")
 #define ORDERING_GT zend_enum_get_case_cstr(zend_ce_ordering_enum, "LeftGreater")
 #define ORDERING_LT zend_enum_get_case_cstr(zend_ce_ordering_enum, "RightGreater")
 #define ORDERING_UC zend_enum_get_case_cstr(zend_ce_ordering_enum, "Uncomparable")
 
-#define ORDERING_IS(l, r) Z_STRVAL_P(zend_enum_fetch_case_name((zend_object *)(l))) == Z_STRVAL_P(zend_enum_fetch_case_name((zend_object *)(r)))
-
+#define ZEND_NORMALIZE_ORDERING(n)			\
+	((n) ? (((n)<0) ? ORDERING_LT : ORDERING_GT) : ORDERING_EQ)
+#define ZEND_DENORMALIZE_ORDERING(o) \
+	(zend_enum_is_same_case_name((o), ORDERING_EQ) ? (zend_enum_is_same_case_name((o), ORDERING_GT) ? 1 : -1) : 0)
 END_EXTERN_C()
 
 #endif /* ZEND_ENUM_H */

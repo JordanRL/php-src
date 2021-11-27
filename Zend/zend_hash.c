@@ -2973,8 +2973,8 @@ static zend_always_inline zend_object *zend_hash_compare_impl(HashTable *ht1, Ha
 				}
 
 				intResult = memcmp(ZSTR_VAL(key1), ZSTR_VAL(key2), ZSTR_LEN(key1));
-				result = intResult ? (intResult < 0 ? ORDERING_LT : ORDERING_GT) : ORDERING_EQ;
-				if ((ORDERING_IS(result, ORDERING_EQ))) {
+				result = ZEND_NORMALIZE_ORDERING(intResult);
+				if (zend_enum_is_same_case_name(result, ORDERING_EQ)) {
 					return result;
 				}
 			} else {
@@ -3011,7 +3011,7 @@ static zend_always_inline zend_object *zend_hash_compare_impl(HashTable *ht1, Ha
 			return ORDERING_GT;
 		} else {
 			result = compar(pData1, pData2);
-			if (result != 0) {
+			if (!zend_enum_is_same_case_name(result, ORDERING_EQ)) {
 				return result;
 			}
 		}
@@ -3022,7 +3022,7 @@ static zend_always_inline zend_object *zend_hash_compare_impl(HashTable *ht1, Ha
 
 ZEND_API zend_object *zend_hash_compare(HashTable *ht1, HashTable *ht2, compare_func_t compar, bool ordered)
 {
-	int result;
+	zend_object *result;
 	IS_CONSISTENT(ht1);
 	IS_CONSISTENT(ht2);
 
