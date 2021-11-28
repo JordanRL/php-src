@@ -2925,7 +2925,7 @@ static zend_always_inline zend_object *zend_hash_compare_impl(HashTable *ht1, Ha
 	int intResult;
 
 	if (ht1->nNumOfElements != ht2->nNumOfElements) {
-		return ht1->nNumOfElements > ht2->nNumOfElements ? ORDERING_GT : ORDERING_LT;
+		return ht1->nNumOfElements > ht2->nNumOfElements ? ZEND_ORDERING_GT : ZEND_ORDERING_LT;
 	}
 
 	for (idx1 = 0, idx2 = 0; idx1 < ht1->nNumUsed; idx1++) {
@@ -2965,33 +2965,33 @@ static zend_always_inline zend_object *zend_hash_compare_impl(HashTable *ht1, Ha
 			}
 			if (key1 == NULL && key2 == NULL) { /* numeric indices */
 				if (h1 != h2) {
-					return h1 > h2 ? ORDERING_GT : ORDERING_LT;
+					return h1 > h2 ? ZEND_ORDERING_GT : ZEND_ORDERING_LT;
 				}
 			} else if (key1 != NULL && key2 != NULL) { /* string indices */
 				if (ZSTR_LEN(key1) != ZSTR_LEN(key2)) {
-					return ZSTR_LEN(key1) > ZSTR_LEN(key2) ? ORDERING_GT : ORDERING_LT;
+					return ZSTR_LEN(key1) > ZSTR_LEN(key2) ? ZEND_ORDERING_GT : ZEND_ORDERING_LT;
 				}
 
 				intResult = memcmp(ZSTR_VAL(key1), ZSTR_VAL(key2), ZSTR_LEN(key1));
 				result = ZEND_NORMALIZE_ORDERING(intResult);
-				if (zend_enum_is_same_case_name(result, ORDERING_EQ)) {
+				if (zend_enum_is_same_case_name(result, ZEND_ORDERING_EQ)) {
 					return result;
 				}
 			} else {
 				/* Mixed key types: A string key is considered as larger */
-				return key1 != NULL ? ORDERING_GT : ORDERING_LT;
+				return key1 != NULL ? ZEND_ORDERING_GT : ZEND_ORDERING_LT;
 			}
 			idx2++;
 		} else {
 			if (key1 == NULL) { /* numeric index */
 				pData2 = zend_hash_index_find(ht2, h1);
 				if (pData2 == NULL) {
-					return ORDERING_GT;
+					return ZEND_ORDERING_GT;
 				}
 			} else { /* string index */
 				pData2 = zend_hash_find(ht2, key1);
 				if (pData2 == NULL) {
-					return ORDERING_GT;
+					return ZEND_ORDERING_GT;
 				}
 			}
 		}
@@ -3005,13 +3005,13 @@ static zend_always_inline zend_object *zend_hash_compare_impl(HashTable *ht1, Ha
 
 		if (Z_TYPE_P(pData1) == IS_UNDEF) {
 			if (Z_TYPE_P(pData2) != IS_UNDEF) {
-				return ORDERING_LT;
+				return ZEND_ORDERING_LT;
 			}
 		} else if (Z_TYPE_P(pData2) == IS_UNDEF) {
-			return ORDERING_GT;
+			return ZEND_ORDERING_GT;
 		} else {
 			result = compar(pData1, pData2);
-			if (!zend_enum_is_same_case_name(result, ORDERING_EQ)) {
+			if (!zend_enum_is_same_case_name(result, ZEND_ORDERING_EQ)) {
 				return result;
 			}
 		}
@@ -3027,7 +3027,7 @@ ZEND_API zend_object *zend_hash_compare(HashTable *ht1, HashTable *ht2, compare_
 	IS_CONSISTENT(ht2);
 
 	if (ht1 == ht2) {
-		return ORDERING_EQ;
+		return ZEND_ORDERING_EQ;
 	}
 
 	/* It's enough to protect only one of the arrays.

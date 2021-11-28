@@ -1639,7 +1639,7 @@ ZEND_API zend_object *zend_std_compare_objects(zval *o1, zval *o2) /* {{{ */
 			zval_ptr_dtor(&casted);
 			return ret;
 		}
-		return ORDERING_UC;
+		return ZEND_ORDERING_UC;
 	}
 
 	zobj1 = Z_OBJ_P(o1);
@@ -1649,7 +1649,7 @@ ZEND_API zend_object *zend_std_compare_objects(zval *o1, zval *o2) /* {{{ */
 		return 0; /* the same object */
 	}
 	if (zobj1->ce != zobj2->ce) {
-		return ORDERING_UC; /* different classes */
+		return ZEND_ORDERING_UC; /* different classes */
 	}
 	if (!zobj1->properties && !zobj2->properties) {
 		zend_property_info *info;
@@ -1718,7 +1718,7 @@ ZEND_API zend_object *zend_std_compare_objects(zval *o1, zval *o2) /* {{{ */
 
 ZEND_API int zend_objects_not_comparable(zval *o1, zval *o2)
 {
-	return ORDERING_UC;
+	return ZEND_ORDERING_UC;
 }
 
 ZEND_API int zend_std_has_property(zend_object *zobj, zend_string *name, int has_set_exists, void **cache_slot) /* {{{ */

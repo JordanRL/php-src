@@ -2078,7 +2078,19 @@ ZEND_API int ZEND_FASTCALL numeric_compare_function(zval *op1, zval *op2) /* {{{
 
 ZEND_API zend_result ZEND_FASTCALL compare_function(zval *result, zval *op1, zval *op2) /* {{{ */
 {
-	ZVAL_LONG(result, ZEND_DENORMALIZE_ORDERING(zend_compare(op1, op2)));
+	zend_object *compare_result;
+
+	compare_result = zend_compare(op1, op2);
+
+	if (compare_result == ZEND_ORDERING_UC) {
+		zend_throw_error(NULL, "Uncomparable operands %1s of type %2hhu and %3s of type %4hhu on line %5d.",
+						 Z_STRVAL_P(op1), Z_TYPE_P(op1),
+						 Z_STRVAL_P(op2), Z_TYPE_P(op2),
+						 Z_LINENO_P(op1));
+		return FAILURE;
+	}
+
+	ZVAL_LONG(result, ZEND_DENORMALIZE_ORDERING(compare_result));
 	return SUCCESS;
 }
 /* }}} */
@@ -2138,9 +2150,9 @@ ZEND_API zend_object ZEND_FASTCALL *zend_compare(zval *op1, zval *op2) /* {{{ */
 	zval op1_copy, op2_copy;
 	zend_object *retGT, *retLT, *retEQ;
 
-	retGT = ORDERING_GT;
-	retLT = ORDERING_LT;
-	retEQ = ORDERING_EQ;
+	retGT = ZEND_ORDERING_GT;
+	retLT = ZEND_ORDERING_LT;
+	retEQ = ZEND_ORDERING_EQ;
 
 	while (1) {
 		switch (TYPE_PAIR(Z_TYPE_P(op1), Z_TYPE_P(op2))) {
@@ -2196,23 +2208,23 @@ ZEND_API zend_object ZEND_FASTCALL *zend_compare(zval *op1, zval *op2) /* {{{ */
 
 			case TYPE_PAIR(IS_DOUBLE, IS_STRING):
 				if (zend_isnan(Z_DVAL_P(op1))) {
-					return ORDERING_UC;
+					return ZEND_ORDERING_UC;
 				}
 
 				return ZEND_NORMALIZE_ORDERING(compare_double_to_string(Z_DVAL_P(op1), Z_STR_P(op2)));
 
 			case TYPE_PAIR(IS_STRING, IS_DOUBLE):
 				if (zend_isnan(Z_DVAL_P(op2))) {
-					return ORDERING_UC;
+					return ZEND_ORDERING_UC;
 				}
 
 				return ZEND_NORMALIZE_ORDERING(-compare_double_to_string(Z_DVAL_P(op2), Z_STR_P(op1)));
 
 			case TYPE_PAIR(IS_OBJECT, IS_NULL):
-				return ORDERING_GT;
+				return ZEND_ORDERING_GT;
 
 			case TYPE_PAIR(IS_NULL, IS_OBJECT):
-				return ORDERING_LT;
+				return ZEND_ORDERING_LT;
 
 			default:
 				if (Z_ISREF_P(op1)) {
@@ -2257,7 +2269,7 @@ ZEND_API zend_object ZEND_FASTCALL *zend_compare(zval *op1, zval *op2) /* {{{ */
 				} else {
 					ZEND_UNREACHABLE();
 					zend_throw_error(NULL, "Unsupported operand types");
-					return ORDERING_UC;
+					return ZEND_ORDERING_UC;
 				}
 		}
 	}
@@ -3145,12 +3157,12 @@ ZEND_API zend_object ZEND_FASTCALL *zendi_smart_strcmp(zend_string *s1, zend_str
 			if (ret1 != IS_DOUBLE) {
 				if (oflow2) {
 					/* 2nd operand is integer > LONG_MAX (oflow2==1) or < LONG_MIN (-1) */
-					return (-1 * oflow2 > 0 ? ORDERING_GT : ORDERING_LT);
+					return (-1 * oflow2 > 0 ? ZEND_ORDERING_GT : ZEND_ORDERING_LT);
 				}
 				dval1 = (double) lval1;
 			} else if (ret2 != IS_DOUBLE) {
 				if (oflow1) {
-					return (oflow1 > 0 ? ORDERING_GT : ORDERING_LT);
+					return (oflow1 > 0 ? ZEND_ORDERING_GT : ZEND_ORDERING_LT);
 				}
 				dval2 = (double) lval2;
 			} else if (dval1 == dval2 && !zend_finite(dval1)) {
@@ -3161,7 +3173,7 @@ ZEND_API zend_object ZEND_FASTCALL *zendi_smart_strcmp(zend_string *s1, zend_str
 			dval1 = dval1 - dval2;
 			return ZEND_NORMALIZE_ORDERING(dval1);
 		} else { /* they both have to be long's */
-			return lval1 > lval2 ? ORDERING_GT : (lval1 < lval2 ? ORDERING_LT : ORDERING_EQ);
+			return lval1 > lval2 ? ZEND_ORDERING_GT : (lval1 < lval2 ? ZEND_ORDERING_LT : ZEND_ORDERING_EQ);
 		}
 	} else {
 		int strcmp_ret;
@@ -3180,7 +3192,7 @@ static zend_object *hash_zval_compare_function(zval *z1, zval *z2) /* {{{ */
 
 ZEND_API zend_object ZEND_FASTCALL *zend_compare_symbol_tables(HashTable *ht1, HashTable *ht2) /* {{{ */
 {
-	return ht1 == ht2 ? ORDERING_EQ : zend_hash_compare(ht1, ht2, (compare_func_t) hash_zval_compare_function, 0);
+	return ht1 == ht2 ? ZEND_ORDERING_EQ : zend_hash_compare(ht1, ht2, (compare_func_t) hash_zval_compare_function, 0);
 }
 /* }}} */
 
@@ -3193,11 +3205,11 @@ ZEND_API zend_object ZEND_FASTCALL *zend_compare_arrays(zval *a1, zval *a2) /* {
 ZEND_API zend_object ZEND_FASTCALL *zend_compare_objects(zval *o1, zval *o2) /* {{{ */
 {
 	if (Z_OBJ_P(o1) == Z_OBJ_P(o2)) {
-		return ORDERING_EQ;
+		return ZEND_ORDERING_EQ;
 	}
 
 	if (Z_OBJ_HT_P(o1)->compare == NULL) {
-		return ORDERING_UC;
+		return ZEND_ORDERING_UC;
 	} else {
 		return Z_OBJ_HT_P(o1)->compare(o1, o2);
 	}

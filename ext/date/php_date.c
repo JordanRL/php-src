@@ -1761,7 +1761,7 @@ static zend_object *date_object_compare_date(zval *d1, zval *d2) /* {{{ */
 
 	if (!o1->time || !o2->time) {
 		php_error_docref(NULL, E_WARNING, "Trying to compare an incomplete DateTime or DateTimeImmutable object");
-		return ORDERING_UC;
+		return ZEND_ORDERING_UC;
 	}
 	if (!o1->time->sse_uptodate) {
 		timelib_update_ts(o1->time, o1->time->tz_info);
@@ -1901,7 +1901,7 @@ static int date_object_compare_timezone(zval *tz1, zval *tz2) /* {{{ */
 
 	if (o1->type != o2->type) {
 		php_error_docref(NULL, E_WARNING, "Trying to compare different kinds of DateTimeZone objects");
-		return ORDERING_UC;
+		return ZEND_ORDERING_UC;
 	}
 
 	switch (o1->type) {
@@ -3771,7 +3771,7 @@ static int date_interval_compare_objects(zval *o1, zval *o2) {
 	 * smaller, equal or greater depending on the point in time at which the interval starts. As
 	 * such, we treat DateInterval objects are non-comparable and emit a warning. */
 	zend_error(E_WARNING, "Cannot compare DateInterval objects");
-	return ORDERING_UC;
+	return ZEND_ORDERING_UC;
 }
 
 /* {{{ date_interval_read_property */
