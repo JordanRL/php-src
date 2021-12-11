@@ -164,6 +164,48 @@ static void do_inherit_parent_constructor(zend_class_entry *ce) /* {{{ */
 	if (EXPECTED(!ce->__debugInfo)) {
 		ce->__debugInfo = parent->__debugInfo;
 	}
+	if (EXPECTED(!ce->__add)) {
+		ce->__add = parent->__add;
+	}
+	if (EXPECTED(!ce->__sub)) {
+		ce->__sub = parent->__sub;
+	}
+	if (EXPECTED(!ce->__mul)) {
+		ce->__mul = parent->__mul;
+	}
+	if (EXPECTED(!ce->__div)) {
+		ce->__div = parent->__div;
+	}
+	if (EXPECTED(!ce->__mod)) {
+		ce->__mod = parent->__mod;
+	}
+	if (EXPECTED(!ce->__pow)) {
+		ce->__pow = parent->__pow;
+	}
+	if (EXPECTED(!ce->__bitwiseand)) {
+		ce->__bitwiseand = parent->__bitwiseand;
+	}
+	if (EXPECTED(!ce->__bitwiseor)) {
+		ce->__bitwiseor = parent->__bitwiseor;
+	}
+	if (EXPECTED(!ce->__bitwisexor)) {
+		ce->__bitwisexor = parent->__bitwisexor;
+	}
+	if (EXPECTED(!ce->__bitwisenot)) {
+		ce->__bitwisenot = parent->__bitwisenot;
+	}
+	if (EXPECTED(!ce->__bitwiseshiftleft)) {
+		ce->__bitwiseshiftleft = parent->__bitwiseshiftleft;
+	}
+	if (EXPECTED(!ce->__bitwiseshiftright)) {
+		ce->__bitwiseshiftright = parent->__bitwiseshiftright;
+	}
+	if (EXPECTED(!ce->__equals)) {
+		ce->__equals = parent->__equals;
+	}
+	if (EXPECTED(!ce->__compareto)) {
+		ce->__compareto = parent->__compareto;
+	}
 
 	if (ce->constructor) {
 		if (parent->constructor && UNEXPECTED(parent->constructor->common.fn_flags & ZEND_ACC_FINAL)) {
@@ -2596,6 +2638,20 @@ static zend_class_entry *zend_lazy_class_load(zend_class_entry *pce)
 			zend_update_inherited_handler(__debugInfo);
 			zend_update_inherited_handler(__serialize);
 			zend_update_inherited_handler(__unserialize);
+			zend_update_inherited_handler(__add);
+			zend_update_inherited_handler(__sub);
+			zend_update_inherited_handler(__mul);
+			zend_update_inherited_handler(__div);
+			zend_update_inherited_handler(__mod);
+			zend_update_inherited_handler(__pow);
+			zend_update_inherited_handler(__bitwiseand);
+			zend_update_inherited_handler(__bitwiseor);
+			zend_update_inherited_handler(__bitwisexor);
+			zend_update_inherited_handler(__bitwisenot);
+			zend_update_inherited_handler(__bitwiseshiftleft);
+			zend_update_inherited_handler(__bitwiseshiftright);
+			zend_update_inherited_handler(__equals);
+			zend_update_inherited_handler(__compareto);
 		}
 	}
 

@@ -2446,6 +2446,15 @@ static void zend_check_magic_method_arg_type(uint32_t arg_num, const zend_class_
 		}
 }
 
+static void zend_check_magic_method_explicit_type(uint32_t arg_num, const zend_class_entry *ce, const zend_function *fptr, int error_type)
+{
+	if (!ZEND_TYPE_IS_SET(fptr->common.arg_info[arg_num].type)) {
+		zend_error(error_type, "%s::%s(): Parameter #%d ($%s) must explicitly define a type",
+				   ZSTR_VAL(ce->name), ZSTR_VAL(fptr->common.function_name),
+				   arg_num + 1, ZSTR_VAL(fptr->common.arg_info[arg_num].name));
+	}
+}
+
 static void zend_check_magic_method_return_type(const zend_class_entry *ce, const zend_function *fptr, int error_type, int return_type)
 {
 	if (!(fptr->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE)) {
@@ -2509,8 +2518,98 @@ static void zend_check_magic_method_no_return_type(
 	}
 }
 
+static void zend_check_operator_overload_flags(const zend_class_entry *ce, const zend_function *fptr, int error_type)
+{
+	/*
+	 * Doing these separately from the already present flags checks to
+	 * provide more helpful error messages.
+	 */
+
+	if (fptr->common.fn_flags & ZEND_ACC_STATIC) {
+		zend_error_noreturn(error_type, "Operator %s::%s() cannot be static",
+							ZSTR_VAL(ce->name), ZSTR_VAL(fptr->common.function_name));
+	}
+	if (fptr->common.fn_flags & ZEND_ACC_PRIVATE || fptr->common.fn_flags & ZEND_ACC_PROTECTED) {
+		zend_error_noreturn(error_type, "Operator %s::%s() must have public visibility",
+							ZSTR_VAL(ce->name), ZSTR_VAL(fptr->common.function_name));
+	}
+}
+
+static void zend_check_magic_method_binary_operator_overload(
+        const zend_class_entry *ce, const zend_function *fptr, int error_type)
+{
+
+    zend_check_magic_method_args(2, ce, fptr, error_type);
+	zend_check_operator_overload_flags(ce, fptr, error_type);
+	zend_check_magic_method_explicit_type(0, ce, fptr, error_type);
+	zend_check_magic_method_explicit_type(1, ce, fptr, error_type);
+    zend_check_magic_method_arg_type(0, ce, fptr, error_type, MAY_BE_ANY);
+	zend_type *single_type;
+	ZEND_TYPE_FOREACH(fptr->common.arg_info[1].type, single_type) {
+		if (!ZEND_TYPE_HAS_NAME(*single_type)
+				|| !zend_string_equals_literal_ci(ZEND_TYPE_NAME(*single_type), "OperandPosition")) {
+			zend_error(error_type, "%s::%s(): Parameter #%d ($%s) must be of type %s when declared",
+					   ZSTR_VAL(ce->name), ZSTR_VAL(fptr->common.function_name),
+					   2, ZSTR_VAL(fptr->common.arg_info[1].name),
+					   "OperandPosition");
+		}
+	} ZEND_TYPE_FOREACH_END();
+}
+
+static void zend_check_magic_method_unary_operator_overload(
+		const zend_class_entry *ce, const zend_function *fptr, int error_type)
+{
+	zend_check_magic_method_args(0, ce, fptr, error_type);
+	zend_check_operator_overload_flags(ce, fptr, error_type);
+	zend_check_magic_method_return_type(ce, fptr, error_type, MAY_BE_OBJECT);
+}
+
+static void zend_check_magic_method_equality_operator_overload(
+        const zend_class_entry *ce, const zend_function *fptr, int error_type)
+{
+    zend_check_magic_method_args(1, ce, fptr, error_type);
+	zend_check_operator_overload_flags(ce, fptr, error_type);
+    zend_check_magic_method_explicit_type(0, ce, fptr, error_type);
+    zend_check_magic_method_arg_type(0, ce, fptr, error_type, MAY_BE_ANY);
+    zend_check_magic_method_return_type(ce, fptr, error_type, MAY_BE_BOOL);
+}
+
 ZEND_API void zend_check_magic_method_implementation(const zend_class_entry *ce, const zend_function *fptr, zend_string *lcname, int error_type) /* {{{ */
 {
+	if (zend_string_equals_literal(lcname, ZEND_ADD_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_SUB_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_MUL_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_DIV_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_MOD_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_POW_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_BWAND_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_BWOR_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_BWXOR_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_BWSL_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_BWSR_FUNC_NAME)) {
+		zend_check_magic_method_binary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_BWNOT_FUNC_NAME)) {
+		zend_check_magic_method_unary_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_EQ_FUNC_NAME)) {
+		zend_check_magic_method_equality_operator_overload(ce, fptr, error_type);
+	} else if (zend_string_equals_literal(lcname, ZEND_COMPARE_FUNC_NAME)) {
+		zend_check_magic_method_args(1, ce, fptr, error_type);
+		zend_check_operator_overload_flags(ce, fptr, error_type);
+		zend_check_magic_method_explicit_type(0, ce, fptr, error_type);
+		zend_check_magic_method_arg_type(0, ce, fptr, error_type, MAY_BE_ANY);
+		zend_check_magic_method_return_type(ce, fptr, error_type, MAY_BE_LONG);
+	}
+
 	if (ZSTR_VAL(fptr->common.function_name)[0] != '_'
 	 || ZSTR_VAL(fptr->common.function_name)[1] != '_') {
 		return;
@@ -2608,6 +2707,36 @@ ZEND_API void zend_check_magic_method_implementation(const zend_class_entry *ce,
 
 ZEND_API void zend_add_magic_method(zend_class_entry *ce, zend_function *fptr, zend_string *lcname)
 {
+	if (zend_string_equals_literal(lcname, ZEND_ADD_FUNC_NAME)) {
+		ce->__add = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_SUB_FUNC_NAME)) {
+		ce->__sub = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_MUL_FUNC_NAME)) {
+		ce->__mul = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_DIV_FUNC_NAME)) {
+		ce->__div = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_MOD_FUNC_NAME)) {
+		ce->__mod = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_POW_FUNC_NAME)) {
+		ce->__pow = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_BWAND_FUNC_NAME)) {
+		ce->__bitwiseand = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_BWOR_FUNC_NAME)) {
+		ce->__bitwiseor = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_BWXOR_FUNC_NAME)) {
+		ce->__bitwisexor = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_BWNOT_FUNC_NAME)) {
+		ce->__bitwisenot = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_BWSL_FUNC_NAME)) {
+		ce->__bitwiseshiftleft = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_BWSR_FUNC_NAME)) {
+		ce->__bitwiseshiftright = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_EQ_FUNC_NAME)) {
+		ce->__equals = fptr;
+	} else if (zend_string_equals_literal(lcname, ZEND_COMPARE_FUNC_NAME)) {
+		ce->__compareto = fptr;
+	}
+
 	if (ZSTR_VAL(lcname)[0] != '_' || ZSTR_VAL(lcname)[1] != '_') {
 		/* pass */
 	} else if (zend_string_equals_literal(lcname, ZEND_CLONE_FUNC_NAME)) {

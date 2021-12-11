@@ -2344,6 +2344,8 @@ static zend_always_inline zend_result _zend_update_type_info(
 		case ZEND_IS_NOT_EQUAL:
 		case ZEND_IS_SMALLER:
 		case ZEND_IS_SMALLER_OR_EQUAL:
+		case ZEND_IS_LARGER:
+		case ZEND_IS_LARGER_OR_EQUAL:
 		case ZEND_INSTANCEOF:
 		case ZEND_JMPZ_EX:
 		case ZEND_JMPNZ_EX:
@@ -4599,6 +4601,8 @@ ZEND_API bool zend_may_throw_ex(const zend_op *opline, const zend_ssa_op *ssa_op
 		case ZEND_IS_NOT_EQUAL:
 		case ZEND_IS_SMALLER:
 		case ZEND_IS_SMALLER_OR_EQUAL:
+		case ZEND_IS_LARGER:
+		case ZEND_IS_LARGER_OR_EQUAL:
 		case ZEND_CASE:
 		case ZEND_SPACESHIP:
 			if ((t1 & MAY_BE_ANY) == MAY_BE_NULL

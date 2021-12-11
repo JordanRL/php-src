@@ -62,6 +62,8 @@ ZEND_API zend_result ZEND_FASTCALL is_not_identical_function(zval *result, zval 
 ZEND_API zend_result ZEND_FASTCALL is_not_equal_function(zval *result, zval *op1, zval *op2);
 ZEND_API zend_result ZEND_FASTCALL is_smaller_function(zval *result, zval *op1, zval *op2);
 ZEND_API zend_result ZEND_FASTCALL is_smaller_or_equal_function(zval *result, zval *op1, zval *op2);
+ZEND_API zend_result ZEND_FASTCALL is_larger_function(zval *result, zval *op1, zval *op2);
+ZEND_API zend_result ZEND_FASTCALL is_larger_or_equal_function(zval *result, zval *op1, zval *op2);
 
 ZEND_API bool ZEND_FASTCALL zend_class_implements_interface(const zend_class_entry *class_ce, const zend_class_entry *interface_ce);
 ZEND_API bool ZEND_FASTCALL instanceof_function_slow(const zend_class_entry *instance_ce, const zend_class_entry *ce);
@@ -417,12 +419,11 @@ again:
 	return result;
 }
 
-/* Indicate that two values cannot be compared. This value should be returned for both orderings
- * of the operands. This implies that all of ==, <, <= and >, >= will return false, because we
- * canonicalize >/>= to </<= with swapped operands. */
-// TODO: Use a different value to allow an actual distinction here.
-#define ZEND_UNCOMPARABLE 1
+/* The value of 2 is returned to support later explicit checks for the result > 1 which should always
+ * result in (bool)false. */
+#define ZEND_UNCOMPARABLE 2
 
+ZEND_API int ZEND_FASTCALL zend_equals_object(zval *op1, zval *op2, zend_uchar equals);
 ZEND_API int ZEND_FASTCALL zend_compare(zval *op1, zval *op2);
 
 ZEND_API zend_result ZEND_FASTCALL compare_function(zval *result, zval *op1, zval *op2);

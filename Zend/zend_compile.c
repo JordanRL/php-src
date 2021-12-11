@@ -1799,6 +1799,20 @@ ZEND_API void zend_initialize_class_data(zend_class_entry *ce, bool nullify_hand
 		ce->__serialize = NULL;
 		ce->__unserialize = NULL;
 		ce->__debugInfo = NULL;
+		ce->__add = NULL;
+		ce->__sub = NULL;
+		ce->__mul = NULL;
+		ce->__div = NULL;
+		ce->__mod = NULL;
+		ce->__pow = NULL;
+		ce->__bitwiseand = NULL;
+		ce->__bitwiseor = NULL;
+		ce->__bitwisexor = NULL;
+		ce->__bitwisenot = NULL;
+		ce->__bitwiseshiftleft = NULL;
+		ce->__bitwiseshiftright = NULL;
+		ce->__equals = NULL;
+		ce->__compareto = NULL;
 		ce->create_object = NULL;
 		ce->get_iterator = NULL;
 		ce->iterator_funcs_ptr = NULL;
@@ -2074,6 +2088,8 @@ ZEND_API bool zend_is_smart_branch(const zend_op *opline) /* {{{ */
 		case ZEND_IS_NOT_EQUAL:
 		case ZEND_IS_SMALLER:
 		case ZEND_IS_SMALLER_OR_EQUAL:
+		case ZEND_IS_LARGER:
+		case ZEND_IS_LARGER_OR_EQUAL:
 		case ZEND_CASE:
 		case ZEND_CASE_STRICT:
 		case ZEND_ISSET_ISEMPTY_CV:
@@ -8364,14 +8380,6 @@ static inline bool zend_try_ct_eval_unary_pm(zval *result, zend_ast_kind kind, z
 }
 /* }}} */
 
-static inline void zend_ct_eval_greater(zval *result, zend_ast_kind kind, zval *op1, zval *op2) /* {{{ */
-{
-	binary_op_type fn = kind == ZEND_AST_GREATER
-		? is_smaller_function : is_smaller_or_equal_function;
-	fn(result, op2, op1);
-}
-/* }}} */
-
 static bool zend_try_ct_eval_array(zval *result, zend_ast *ast) /* {{{ */
 {
 	zend_ast_list *list = zend_ast_get_list(ast);
@@ -8591,35 +8599,7 @@ static void zend_compile_binary_op(znode *result, zend_ast *ast) /* {{{ */
 }
 /* }}} */
 
-/* We do not use zend_compile_binary_op for this because we want to retain the left-to-right
- * evaluation order. */
-static void zend_compile_greater(znode *result, zend_ast *ast) /* {{{ */
-{
-	zend_ast *left_ast = ast->child[0];
-	zend_ast *right_ast = ast->child[1];
-	znode left_node, right_node;
-
-	ZEND_ASSERT(ast->kind == ZEND_AST_GREATER || ast->kind == ZEND_AST_GREATER_EQUAL);
-
-	zend_compile_expr(&left_node, left_ast);
-	zend_compile_expr(&right_node, right_ast);
-
-	if (left_node.op_type == IS_CONST && right_node.op_type == IS_CONST) {
-		result->op_type = IS_CONST;
-		zend_ct_eval_greater(&result->u.constant, ast->kind,
-			&left_node.u.constant, &right_node.u.constant);
-		zval_ptr_dtor(&left_node.u.constant);
-		zval_ptr_dtor(&right_node.u.constant);
-		return;
-	}
-
-	zend_emit_op_tmp(result,
-		ast->kind == ZEND_AST_GREATER ? ZEND_IS_SMALLER : ZEND_IS_SMALLER_OR_EQUAL,
-		&right_node, &left_node);
-}
-/* }}} */
-
-static void zend_compile_unary_op(znode *result, zend_ast *ast) /* {{{ */
+void zend_compile_unary_op(znode *result, zend_ast *ast) /* {{{ */
 {
 	zend_ast *expr_ast = ast->child[0];
 	uint32_t opcode = ast->attr;
@@ -9628,7 +9608,6 @@ static void zend_compile_magic_const(znode *result, zend_ast *ast) /* {{{ */
 static bool zend_is_allowed_in_const_expr(zend_ast_kind kind) /* {{{ */
 {
 	return kind == ZEND_AST_ZVAL || kind == ZEND_AST_BINARY_OP
-		|| kind == ZEND_AST_GREATER || kind == ZEND_AST_GREATER_EQUAL
 		|| kind == ZEND_AST_AND || kind == ZEND_AST_OR
 		|| kind == ZEND_AST_UNARY_OP
 		|| kind == ZEND_AST_UNARY_PLUS || kind == ZEND_AST_UNARY_MINUS
@@ -10052,10 +10031,6 @@ static void zend_compile_expr_inner(znode *result, zend_ast *ast) /* {{{ */
 		case ZEND_AST_BINARY_OP:
 			zend_compile_binary_op(result, ast);
 			return;
-		case ZEND_AST_GREATER:
-		case ZEND_AST_GREATER_EQUAL:
-			zend_compile_greater(result, ast);
-			return;
 		case ZEND_AST_UNARY_OP:
 			zend_compile_unary_op(result, ast);
 			return;
@@ -10248,17 +10223,6 @@ static void zend_eval_const_expr(zend_ast **ast_ptr) /* {{{ */
 			) {
 				return;
 			}
-			break;
-		case ZEND_AST_GREATER:
-		case ZEND_AST_GREATER_EQUAL:
-			zend_eval_const_expr(&ast->child[0]);
-			zend_eval_const_expr(&ast->child[1]);
-			if (ast->child[0]->kind != ZEND_AST_ZVAL || ast->child[1]->kind != ZEND_AST_ZVAL) {
-				return;
-			}
-
-			zend_ct_eval_greater(&result, ast->kind,
-				zend_ast_get_zval(ast->child[0]), zend_ast_get_zval(ast->child[1]));
 			break;
 		case ZEND_AST_AND:
 		case ZEND_AST_OR:

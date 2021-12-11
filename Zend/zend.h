@@ -181,6 +181,22 @@ struct _zend_class_entry {
 	zend_function *__serialize;
 	zend_function *__unserialize;
 
+	/* operator overloads */
+	zend_function *__add;
+	zend_function *__sub;
+	zend_function *__mul;
+	zend_function *__div;
+	zend_function *__mod;
+	zend_function *__pow;
+	zend_function *__bitwiseand;
+	zend_function *__bitwiseor;
+	zend_function *__bitwisexor;
+	zend_function *__bitwisenot;
+	zend_function *__bitwiseshiftleft;
+	zend_function *__bitwiseshiftright;
+	zend_function *__equals;
+	zend_function *__compareto;
+
 	/* allocated only if class implements Iterator or IteratorAggregate interface */
 	zend_class_iterator_funcs *iterator_funcs_ptr;
 	/* allocated only if class implements ArrayAccess interface */

@@ -357,6 +357,9 @@ typedef struct _zend_oparray_context {
 /* method flag used by Closure::__invoke() (int only)     |     |     |     */
 #define ZEND_ACC_USER_ARG_INFO           (1 << 26) /*     |  X  |     |     */
 /*                                                        |     |     |     */
+/* method is an operator                                  |     |     |     */
+#define ZEND_ACC_OPERATOR                (1 << 27) /*     |  X  |     |     */
+/*                                                        |     |     |     */
 /* op_array uses strict mode types                        |     |     |     */
 #define ZEND_ACC_STRICT_TYPES            (1U << 31) /*    |  X  |     |     */
 
@@ -1104,6 +1107,26 @@ END_EXTERN_C()
 #define ZEND_TOSTRING_FUNC_NAME     "__tostring"
 #define ZEND_INVOKE_FUNC_NAME       "__invoke"
 #define ZEND_DEBUGINFO_FUNC_NAME    "__debuginfo"
+
+/* operator overload functions */
+
+/* binary operators */
+#define ZEND_ADD_FUNC_NAME			"+"
+#define ZEND_SUB_FUNC_NAME			"-"
+#define ZEND_MUL_FUNC_NAME			"*"
+#define ZEND_DIV_FUNC_NAME			"/"
+#define ZEND_MOD_FUNC_NAME			"%"
+#define ZEND_POW_FUNC_NAME			"**"
+#define ZEND_BWAND_FUNC_NAME		"&"
+#define ZEND_BWOR_FUNC_NAME			"|"
+#define ZEND_BWXOR_FUNC_NAME		"^"
+#define ZEND_BWSL_FUNC_NAME			"<<"
+#define ZEND_BWSR_FUNC_NAME			">>"
+/* unary operators */
+#define ZEND_BWNOT_FUNC_NAME		"~"
+/* comparison operators */
+#define ZEND_EQ_FUNC_NAME			"=="
+#define ZEND_COMPARE_FUNC_NAME		"<=>"
 
 /* The following constants may be combined in CG(compiler_options)
  * to change the default compiler behavior */

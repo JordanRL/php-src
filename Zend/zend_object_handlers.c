@@ -30,6 +30,7 @@
 #include "zend_closures.h"
 #include "zend_compile.h"
 #include "zend_hash.h"
+#include "zend_enum.h"
 
 #define DEBUG_OBJECT_HANDLERS 0
 
@@ -218,6 +219,193 @@ static void zend_std_call_issetter(zend_object *zobj, zend_string *prop_name, zv
 }
 /* }}} */
 
+static int zend_std_call_op_override(zend_uchar opcode, zval *result, zval *op1, zval *op2) /* {{{ */
+{
+	zend_bool is_retry = 0;
+	zend_bool is_unary = 0;
+	zend_object *zobj;
+	zend_class_entry *ce;
+	char *operator;
+
+	if(Z_TYPE_P(op1) == IS_OBJECT) {
+		zobj = Z_OBJ_P(op1);
+		ce = Z_OBJCE_P(op1);
+	} else {
+		zobj = Z_OBJ_P(op2);
+		ce = Z_OBJCE_P(op2);
+		is_retry = 1;
+	}
+
+	if (op2 == NULL) {
+		is_unary = 1;
+	}
+
+	zend_class_entry *orig_fake_scope = EG(fake_scope);
+	EG(fake_scope) = NULL;
+
+	zval params[2];
+
+	zend_fcall_info fci;
+	zend_fcall_info_cache fcic;
+
+	/* fci setup */
+	fci.size = sizeof(fci);
+	fci.retval = result;
+	fci.named_params = NULL;
+	ZVAL_UNDEF(&fci.function_name); /* Unused */
+
+	operator = "";
+	ZVAL_UNDEF(&params[0]);
+	ZVAL_UNDEF(&params[1]);
+	zend_object *left_val = zend_enum_get_case_cstr(zend_ce_operand_position_enum, "LeftSide");
+	zend_object *right_val = zend_enum_get_case_cstr(zend_ce_operand_position_enum, "RightSide");
+
+	do {
+		fci.object = zobj;
+
+		if (is_unary) {
+			fci.param_count = 0;
+		} else if (opcode == ZEND_IS_EQUAL || opcode == ZEND_IS_NOT_EQUAL) {
+			fci.param_count = 1;
+			if (zobj == Z_OBJ_P(op1)) {
+				ZVAL_COPY(&params[0], op2);
+			} else {
+				ZVAL_COPY(&params[0], op1);
+			}
+			fci.params = params;
+		} else {
+			fci.param_count = 2;
+			if (zobj == Z_OBJ_P(op1)) {
+				ZVAL_COPY(&params[0], op2);
+				ZVAL_OBJ_COPY(&params[1], left_val);
+			} else {
+				ZVAL_COPY(&params[0], op1);
+				ZVAL_OBJ_COPY(&params[1], right_val);
+			}
+			fci.params = params;
+		}
+
+		switch (opcode) {
+			case ZEND_ADD:
+				fcic.function_handler = ce->__add;
+				operator = "+";
+				break;
+
+			case ZEND_SUB:
+				fcic.function_handler = ce->__sub;
+				operator = "-";
+				break;
+
+			case ZEND_MUL:
+				fcic.function_handler = ce->__mul;
+				operator = "*";
+				break;
+
+			case ZEND_DIV:
+				fcic.function_handler = ce->__div;
+				operator = "/";
+				break;
+
+			case ZEND_MOD:
+				fcic.function_handler = ce->__mod;
+				operator = "%";
+				break;
+
+			case ZEND_POW:
+				fcic.function_handler = ce->__pow;
+				operator = "**";
+				break;
+
+			case ZEND_BW_AND:
+				fcic.function_handler = ce->__bitwiseand;
+				operator = "&";
+				break;
+
+			case ZEND_BW_OR:
+				fcic.function_handler = ce->__bitwiseor;
+				operator = "|";
+				break;
+
+			case ZEND_BW_XOR:
+				fcic.function_handler = ce->__bitwisexor;
+				operator = "^";
+				break;
+
+			case ZEND_BW_NOT:
+				fcic.function_handler = ce->__bitwisenot;
+				operator = "~";
+				break;
+
+			case ZEND_SL:
+				fcic.function_handler = ce->__bitwiseshiftleft;
+				operator = "<<";
+				break;
+
+			case ZEND_SR:
+				fcic.function_handler = ce->__bitwiseshiftright;
+				operator = ">>";
+				break;
+
+			case ZEND_IS_EQUAL:
+			case ZEND_IS_NOT_EQUAL:
+				fcic.function_handler = ce->__equals;
+				break;
+
+			default:
+				return FAILURE;
+		}
+
+		if (fcic.function_handler == NULL)
+		{
+			if (fci.param_count > 0) {
+				zval_ptr_dtor(&params[0]);
+				if (fci.param_count > 1) {
+					zval_ptr_dtor(&params[1]);
+				}
+			}
+
+			if(zobj == Z_OBJ_P(op1) &&
+			   !is_unary &&
+			   Z_TYPE_P(op2) == IS_OBJECT &&
+			   !is_retry ) {
+				zobj = Z_OBJ_P(op2);
+				ce = Z_OBJCE_P(op2);
+				is_retry = 1;
+				continue;
+			}
+
+			if (opcode == ZEND_IS_EQUAL || opcode == ZEND_IS_NOT_EQUAL) {
+				/* For equality comparisons, return failure for all objects to    */
+				/* allow the normal override of the compare handler in extensions */
+				EG(fake_scope) = orig_fake_scope;
+				return FAILURE;
+			}
+
+			if (ce->type != ZEND_INTERNAL_CLASS) {
+				zend_throw_exception_ex(zend_ce_operator_error, 0, "Operator '%s' unsupported by class %s", operator, ZSTR_VAL(ce->name));
+			}
+
+			EG(fake_scope) = orig_fake_scope;
+
+			return FAILURE;
+		}
+
+		fcic.called_scope = ce;
+		fcic.object = zobj;
+		zend_result tmp = zend_call_function(&fci, &fcic);
+
+		if (fci.param_count > 0) {
+			zval_ptr_dtor(&params[0]);
+			if (fci.param_count > 1) {
+				zval_ptr_dtor(&params[1]);
+			}
+		}
+
+		EG(fake_scope) = orig_fake_scope;
+
+		return tmp;
+	} while(1);
+}
 
 static zend_always_inline bool is_derived_class(zend_class_entry *child_class, zend_class_entry *parent_class) /* {{{ */
 {
@@ -1594,6 +1782,85 @@ ZEND_API zend_function *zend_std_get_constructor(zend_object *zobj) /* {{{ */
 }
 /* }}} */
 
+ZEND_API int zend_std_user_compare_objects(zval *o1, zval *o2) /* {{{ */
+{
+	zend_bool is_retry = 0;
+	zend_object *zobj;
+	zend_class_entry *ce;
+
+	if(Z_TYPE_P(o1) == IS_OBJECT) {
+		zobj = Z_OBJ_P(o1);
+		ce = Z_OBJCE_P(o1);
+	} else {
+		zobj = Z_OBJ_P(o2);
+		ce = Z_OBJCE_P(o2);
+		is_retry = 1;
+	}
+
+	zend_class_entry *orig_fake_scope = EG(fake_scope);
+	EG(fake_scope) = NULL;
+
+	zend_fcall_info fci;
+	zend_fcall_info_cache fcic;
+	zval result;
+	int resultLval;
+
+	zval params[1];
+
+	//ZVAL_UNDEF(&result);
+	ZVAL_COPY_VALUE(&params[0], o2);
+
+	fci.param_count = 1;
+	fci.size = sizeof(fci);
+	fci.retval = &result;
+	fci.named_params = NULL;
+	ZVAL_UNDEF(&fci.function_name); /* Unused */
+
+	do {
+		fci.object = zobj;
+		fcic.function_handler = ce->__compareto;
+
+		if (fcic.function_handler == NULL)
+		{
+			if(zobj == Z_OBJ_P(o1) && Z_TYPE_P(o2) == IS_OBJECT && !is_retry) {
+				zobj = Z_OBJ_P(o2);
+				ce = Z_OBJCE_P(o2);
+				ZVAL_COPY_VALUE(&params[0], o1);
+				is_retry = 1;
+				continue;
+			}
+
+			if (Z_TYPE_P(o2) == IS_OBJECT &&
+					Z_OBJCE_P(o2)->type == ZEND_INTERNAL_CLASS &&
+					Z_OBJ_HANDLER_P(o2, compare) != zend_std_user_compare_objects) {
+				return Z_OBJ_HANDLER_P(o2, compare)(o1, o2);
+			} else {
+				return zend_std_compare_objects(o1, o2);
+			}
+		}
+
+		fci.params = params;
+		fcic.called_scope = ce;
+		fcic.object = zobj;
+		int tmp = zend_call_function(&fci, &fcic);
+
+		EG(fake_scope) = orig_fake_scope;
+
+		if (tmp == SUCCESS) {
+			resultLval = Z_LVAL(result);
+			/* Normalize ints out of range for compare op */
+			resultLval = (resultLval > 1 ? 1 : resultLval);
+			resultLval = (resultLval < -1 ? -1 : resultLval);
+			/* Reverse for right hand operand */
+			resultLval = (is_retry ? resultLval*-1 : resultLval);
+			return resultLval;
+		} else {
+			return ZEND_UNCOMPARABLE;
+		}
+	} while(1);
+}
+/* }}} */
+
 ZEND_API int zend_std_compare_objects(zval *o1, zval *o2) /* {{{ */
 {
 	zend_object *zobj1, *zobj2;
@@ -1724,6 +1991,180 @@ ZEND_API int zend_std_compare_objects(zval *o1, zval *o2) /* {{{ */
 ZEND_API int zend_objects_not_comparable(zval *o1, zval *o2)
 {
 	return ZEND_UNCOMPARABLE;
+}
+
+ZEND_API int zend_std_has_op_overload(zend_uchar opcode, zval *obj)
+{
+	if (Z_TYPE_P(obj) != IS_OBJECT) {
+		return 0;
+	}
+
+	zend_class_entry *ce = Z_OBJCE_P(obj);
+
+	switch (opcode) {
+		case ZEND_ADD:
+			if (ce->__add != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_SUB:
+			if (ce->__sub != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_MUL:
+			if (ce->__mul != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_DIV:
+			if (ce->__div != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_MOD:
+			if (ce->__mod != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_POW:
+			if (ce->__pow != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_BW_AND:
+			if (ce->__bitwiseand != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_BW_OR:
+			if (ce->__bitwiseor != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_BW_XOR:
+			if (ce->__bitwisexor != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_BW_NOT:
+			if (ce->__bitwisenot != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_SL:
+			if (ce->__bitwiseshiftleft != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_SR:
+			if (ce->__bitwiseshiftright != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_IS_EQUAL:
+		case ZEND_IS_NOT_EQUAL:
+			if (ce->__equals != NULL) {
+				return 1;
+			}
+			break;
+
+		case ZEND_IS_SMALLER:
+		case ZEND_IS_SMALLER_OR_EQUAL:
+		case ZEND_IS_LARGER:
+		case ZEND_IS_LARGER_OR_EQUAL:
+		case ZEND_SPACESHIP:
+			if (ce->__compareto != NULL) {
+				return 1;
+			}
+			break;
+
+		default:
+			return 0;
+	}
+
+	return 0;
+}
+
+ZEND_API zend_function *zend_std_get_op_overload(zend_uchar opcode, zend_class_entry *ce)
+{
+	switch (opcode) {
+		case ZEND_ADD:
+			return ce->__add;
+			break;
+
+		case ZEND_SUB:
+			return ce->__sub;
+			break;
+
+		case ZEND_MUL:
+			return ce->__mul;
+			break;
+
+		case ZEND_DIV:
+			return ce->__div;
+			break;
+
+		case ZEND_MOD:
+			return ce->__mod;
+			break;
+
+		case ZEND_POW:
+			return ce->__pow;
+			break;
+
+		case ZEND_BW_AND:
+			return ce->__bitwiseand;
+			break;
+
+		case ZEND_BW_OR:
+			return ce->__bitwiseor;
+			break;
+
+		case ZEND_BW_XOR:
+			return ce->__bitwisexor;
+			break;
+
+		case ZEND_BW_NOT:
+			return ce->__bitwisenot;
+			break;
+
+		case ZEND_SL:
+			return ce->__bitwiseshiftleft;
+			break;
+
+		case ZEND_SR:
+			return ce->__bitwiseshiftright;
+			break;
+
+		case ZEND_IS_EQUAL:
+		case ZEND_IS_NOT_EQUAL:
+			return ce->__equals;
+			break;
+
+		case ZEND_IS_SMALLER:
+		case ZEND_IS_SMALLER_OR_EQUAL:
+		case ZEND_IS_LARGER:
+		case ZEND_IS_LARGER_OR_EQUAL:
+		case ZEND_SPACESHIP:
+			return ce->__compareto;
+			break;
+
+		default:
+			return NULL;
+	}
 }
 
 ZEND_API int zend_std_has_property(zend_object *zobj, zend_string *name, int has_set_exists, void **cache_slot) /* {{{ */
@@ -1951,7 +2392,7 @@ ZEND_API const zend_object_handlers std_object_handlers = {
 	zend_std_get_debug_info,				/* get_debug_info */
 	zend_std_get_closure,					/* get_closure */
 	zend_std_get_gc,						/* get_gc */
-	NULL,									/* do_operation */
-	zend_std_compare_objects,				/* compare */
+	zend_std_call_op_override,									/* do_operation */
+	zend_std_user_compare_objects,				/* compare */
 	NULL,									/* get_properties_for */
 };

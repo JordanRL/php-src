@@ -42,6 +42,7 @@ ZEND_API zend_class_entry *zend_ce_value_error;
 ZEND_API zend_class_entry *zend_ce_arithmetic_error;
 ZEND_API zend_class_entry *zend_ce_division_by_zero_error;
 ZEND_API zend_class_entry *zend_ce_unhandled_match_error;
+ZEND_API zend_class_entry *zend_ce_operator_error;
 
 /* Internal pseudo-exception that is not exposed to userland. Throwing this exception *does not* execute finally blocks. */
 static zend_class_entry zend_ce_unwind_exit;
@@ -779,6 +780,9 @@ void zend_register_default_exception(void) /* {{{ */
 
 	zend_ce_unhandled_match_error = register_class_UnhandledMatchError(zend_ce_error);
 	zend_ce_unhandled_match_error->create_object = zend_default_exception_new;
+
+	zend_ce_operator_error = register_class_InvalidOperator(zend_ce_type_error);
+	zend_ce_operator_error->create_object = zend_default_exception_new;
 
 	INIT_CLASS_ENTRY(zend_ce_unwind_exit, "UnwindExit", NULL);
 
