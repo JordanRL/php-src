@@ -21,11 +21,15 @@
 
 #include "zend.h"
 #include "zend_types.h"
+#ifndef ZEND_API_H
+#include "zend_API.h"
+#endif
 
 BEGIN_EXTERN_C()
 
 extern ZEND_API zend_class_entry *zend_ce_unit_enum;
 extern ZEND_API zend_class_entry *zend_ce_backed_enum;
+extern ZEND_API zend_class_entry *zend_ce_ordering_enum;
 
 void zend_register_enum_ce(void);
 void zend_enum_add_interfaces(zend_class_entry *ce);
@@ -54,6 +58,16 @@ static zend_always_inline zval *zend_enum_fetch_case_value(zend_object *zobj)
 	return OBJ_PROP_NUM(zobj, 1);
 }
 
+
+#define ZEND_ORDERING_EQ zend_enum_get_case_cstr(zend_ce_ordering_enum, "Equal")
+#define ZEND_ORDERING_GT zend_enum_get_case_cstr(zend_ce_ordering_enum, "LeftGreater")
+#define ZEND_ORDERING_LT zend_enum_get_case_cstr(zend_ce_ordering_enum, "RightGreater")
+#define ZEND_ORDERING_UC zend_enum_get_case_cstr(zend_ce_ordering_enum, "Uncomparable")
+
+#define ZEND_NORMALIZE_ORDERING(n)			\
+	((n) ? (((n)<0) ? ZEND_ORDERING_LT : ZEND_ORDERING_GT) : ZEND_ORDERING_EQ)
+#define ZEND_DENORMALIZE_ORDERING(o) \
+	(zend_enum_is_same_case_name((o), ZEND_ORDERING_EQ) ? (zend_enum_is_same_case_name((o), ZEND_ORDERING_GT) ? 1 : -1) : 0)
 END_EXTERN_C()
 
 #endif /* ZEND_ENUM_H */

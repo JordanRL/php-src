@@ -22,6 +22,7 @@
 #define ZEND_HASH_H
 
 #include "zend.h"
+#include "zend_types.h"
 
 #define HASH_KEY_IS_STRING 1
 #define HASH_KEY_IS_LONG 2
@@ -283,7 +284,7 @@ ZEND_API void  zend_hash_bucket_renum_swap(Bucket *p, Bucket *q);
 ZEND_API void  zend_hash_bucket_packed_swap(Bucket *p, Bucket *q);
 
 typedef int (*bucket_compare_func_t)(Bucket *a, Bucket *b);
-ZEND_API int   zend_hash_compare(HashTable *ht1, HashTable *ht2, compare_func_t compar, bool ordered);
+ZEND_API zend_object  *zend_hash_compare(HashTable *ht1, HashTable *ht2, compare_func_t compar, bool ordered);
 ZEND_API void  ZEND_FASTCALL zend_hash_sort_ex(HashTable *ht, sort_func_t sort_func, bucket_compare_func_t compare_func, bool renumber);
 ZEND_API zval* ZEND_FASTCALL zend_hash_minmax(const HashTable *ht, compare_func_t compar, uint32_t flag);
 

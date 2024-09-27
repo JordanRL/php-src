@@ -1243,7 +1243,7 @@ static int sxe_objects_compare(zval *object1, zval *object2) /* {{{ */
 		if (sxe1->node == sxe2->node) {
 			return 0;
 		}
-		return ZEND_UNCOMPARABLE;
+		return ORDERING_UC;
 	}
 
 	if (sxe1->node == NULL && sxe2->node == NULL) {
@@ -1251,11 +1251,11 @@ static int sxe_objects_compare(zval *object1, zval *object2) /* {{{ */
 		if (sxe1->document->ptr == sxe2->document->ptr) {
 			return 0;
 		}
-		return ZEND_UNCOMPARABLE;
+		return ORDERING_UC;
 	}
 
 	/* Only one of the nodes set: Cannot compare. */
-	return ZEND_UNCOMPARABLE;
+	return ORDERING_UC;
 }
 /* }}} */
 
